@@ -177,21 +177,20 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
     // ── Tick event ─────────────────────────────────────────────────────────────
     @EventHandler
     public void onTickEnd(ServerTickEndEvent e) {
-        if (!recording.get()) return;
-
-        tickCount++;
-        if (tickCount >= stopAtTick) {
-            // Schedule stop on next server tick to avoid event-handler deadlock
-            getServer().getScheduler().runTask(this, () -> stopRecording(
-                    getServer().getConsoleSender()));
-        }
-
-        double mspt   = e.getTickDuration();
+        double mspt = e.getTickDuration();
         synchronized (rollingTicks) {
             rollingTicks.addLast(mspt);
             if (rollingTicks.size() > 1200) rollingTicks.pollFirst();
         }
+
         if (!recording.get()) return;
+
+        tickCount++;
+        if (tickCount >= stopAtTick) {
+            getServer().getScheduler().runTask(this, () -> stopRecording(
+                    getServer().getConsoleSender()));
+        }
+
         long   tsMs   = System.currentTimeMillis();
         double tempC  = readTemp();
         double freqMhz = readFreqMhz();
