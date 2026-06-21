@@ -93,18 +93,14 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
             getLogger().warning("OSHI init failed: " + e.getMessage());
         }
 
-        startSampler();
-
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("perfmon").setExecutor(this);
         getServer().getScheduler().runTaskTimerAsynchronously(this, this::writeLiveJson, 20L, 20L);
-        getLogger().info("PerfBridge ready — spike profiler active (threshold: " + spikeThresholdMs + "ms)");
+        getLogger().info("PerfBridge ready — /perfmon start [seconds] | /perfmon stop");
     }
 
     @Override
     public void onDisable() {
-        samplerRunning = false;
-        if (samplerThread != null) samplerThread.interrupt();
         stopRecording(null);
     }
 
@@ -265,11 +261,14 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
         writerThread.setDaemon(true);
         recording.set(true);
         writerThread.start();
+        startSampler();
     }
 
     private void stopRecording(CommandSender sender) {
         if (!recording.compareAndSet(true, false)) return;
         stopAtTick = Long.MAX_VALUE;
+        samplerRunning = false;
+        if (samplerThread != null) samplerThread.interrupt();
         if (writerThread != null) {
             try { writerThread.join(3000); } catch (InterruptedException ignored) {}
         }
