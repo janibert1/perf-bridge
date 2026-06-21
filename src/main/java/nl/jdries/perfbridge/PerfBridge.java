@@ -25,7 +25,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
 
     // ── /sys paths ─────────────────────────────────────────────────────────────
     private static final Path TEMP_PATH  = Path.of("/sys/class/thermal/thermal_zone2/temp");
-    private static final Path RAPL_PKG   = Path.of("/sys/class/powercap/intel-rapl:0/energy_uj");
+    private static final Path POWER_FILE  = Path.of("/home/container/power_w");  // written by host sidecar
     private static final String FREQ_GLOB = "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq";
     private static final int NUM_CORES   = Runtime.getRuntime().availableProcessors();
 
@@ -37,9 +37,8 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
     private volatile long stopAtTick = Long.MAX_VALUE;
     private volatile long tickCount  = 0;
 
-    // RAPL tracking
-    private long lastRaplUj   = -1;
-    private long lastRaplTime = -1;
+    // Who triggered the current recording session (for auto-stop feedback)
+    private volatile CommandSender recordingInitiator;
 
     // Async writer thread
     private Thread writerThread;
@@ -129,7 +128,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
         String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
         outFile = Path.of("/tmp/mc_perf_" + ts + ".csv");
         tickCount = 0;
-        lastRaplUj = -1;
+        recordingInitiator = sender;
 
         if (seconds > 0) {
             stopAtTick = seconds * 20L;  // approx ticks
@@ -187,8 +186,9 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
 
         tickCount++;
         if (tickCount >= stopAtTick) {
+            CommandSender initiator = recordingInitiator;
             getServer().getScheduler().runTask(this, () -> stopRecording(
-                    getServer().getConsoleSender()));
+                    initiator != null ? initiator : getServer().getConsoleSender()));
         }
 
         long   tsMs   = System.currentTimeMillis();
@@ -226,19 +226,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
 
     private double readPowerW() {
         try {
-            long now = System.nanoTime();
-            long uj  = Long.parseLong(Files.readString(RAPL_PKG).trim());
-            if (lastRaplUj < 0) {
-                lastRaplUj   = uj;
-                lastRaplTime = now;
-                return 0;
-            }
-            long deltaUj = uj - lastRaplUj;
-            if (deltaUj < 0) deltaUj += 0xFFFFFFFFL;  // wrap
-            double dtSec = (now - lastRaplTime) / 1e9;
-            lastRaplUj   = uj;
-            lastRaplTime = now;
-            return dtSec > 0 ? (deltaUj / 1e6) / dtSec : 0;
+            return Double.parseDouble(Files.readString(POWER_FILE).trim());
         } catch (Exception e) { return -1; }
     }
 }
