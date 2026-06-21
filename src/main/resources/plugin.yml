@@ -1,5 +1,5 @@
 name: PerfBridge
-version: 1.0
+version: 1.1
 main: nl.jdries.perfbridge.PerfBridge
 api-version: 26.1.2
 description: Per-tick performance logger (MSPT, CPU temp, freq, power)
