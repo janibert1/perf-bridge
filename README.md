@@ -1,6 +1,6 @@
 # PerfBridge
 
-A Paper plugin that logs per-tick server performance data to a CSV file. Each tick records MSPT, CPU temperature, CPU frequency, and (optionally) CPU power draw.
+A Paper plugin that logs per-tick server performance data to a CSV file. Each tick records MSPT, CPU temperature, CPU frequency, and power draw.
 
 Built because the standard `/mspt` command only gives you rolling averages — PerfBridge gives you the raw tick-by-tick data so you can actually see what's causing lag spikes.
 
@@ -10,6 +10,7 @@ Built because the standard `/mspt` command only gives you rolling averages — P
 - In-game command to start/stop recording with optional duration
 - Live rolling JSON summary at `/tmp/mc_perf.json` (useful for terminal monitors)
 - Cross-platform hardware stats via [OSHI](https://github.com/oshi/oshi) — works on Linux, macOS, and Windows
+- Power draw via OS power supply interface (whole-system) or a custom sidecar file
 - Zero overhead when not recording
 
 ## Requirements
@@ -40,23 +41,17 @@ Only players with the `perfbridge.use` permission (op by default) can run the co
 # Directory where CSV recordings are saved
 output-dir: /tmp
 
-# Path to a file containing current CPU package power in watts (one float, updated externally).
-# Leave empty to disable power logging (column shows -1).
-# See power-sidecar.py for the Linux/Intel RAPL host script that writes this file.
+# Path to a file containing the current CPU package power draw in watts (one float per line).
+# Use this when running inside Docker (e.g. Pterodactyl) where RAPL is not accessible.
+# Leave empty to let OSHI read power automatically via the OS power supply interface.
 power-file: ""
 ```
 
-## Power logging (optional, Linux + Intel RAPL only)
+## Power logging
 
-CPU power draw can't be read from inside a Docker container (e.g. Pterodactyl). The workaround is a small host-side sidecar script that reads Intel RAPL and writes the current wattage to a file the container can access.
+Power draw is read via OSHI's power source interface by default — this gives whole-system draw and works on macOS, Windows, and bare-metal Linux without any extra setup.
 
-1. Copy `power-sidecar.py` to the host machine
-2. Install the systemd service or run it manually: `python3 power-sidecar.py`
-3. Set `power-file` in `config.yml` to the path the container sees (e.g. `/home/container/power_w` for Pterodactyl)
-
-If you're not using Docker, set `power-file` to `/sys/class/powercap/intel-rapl:0/energy_uj` — the sidecar handles computing watts from the raw counter, so that won't work directly. Just run the sidecar and point to its output file.
-
-On non-Linux systems or non-Intel CPUs, leave `power-file` empty and the column will show `-1`.
+If you're running inside Docker (e.g. Pterodactyl), OSHI can't reach the host power subsystem. In that case, set `power-file` to a path the container can read and write a float (watts) to that file from the host — any mechanism works (a small Python/shell script reading Intel RAPL, `powerstat`, etc.).
 
 ## CSV format
 
@@ -67,7 +62,7 @@ On non-Linux systems or non-Intel CPUs, leave `power-file` empty and the column 
 | `mspt` | Milliseconds per tick (how long this tick took) |
 | `cpu_temp_c` | CPU package temperature in °C |
 | `cpu_freq_mhz` | Average CPU frequency across all cores in MHz |
-| `cpu_power_w` | CPU package power draw in watts (`-1` if unavailable) |
+| `cpu_power_w` | System power draw in watts (`-1` if unavailable) |
 
 A healthy server running at 20 TPS will show `mspt` values consistently below 50. Spikes above 50 mean the server missed a tick. Values above 100+ indicate serious lag.
 
@@ -79,7 +74,7 @@ cd perf-bridge
 mvn package
 ```
 
-The shaded jar will be at `target/perf-bridge-1.1.jar`.
+The shaded jar will be at `target/perf-bridge-1.2.jar`.
 
 ## Live JSON output
 

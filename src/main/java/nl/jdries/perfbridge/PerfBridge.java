@@ -11,7 +11,10 @@ import org.jetbrains.annotations.NotNull;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.HardwareAbstractionLayer;
+import oshi.hardware.PowerSource;
 import oshi.hardware.Sensors;
+
+import java.util.List;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -32,6 +35,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
     // ── OSHI handles ───────────────────────────────────────────────────────────
     private CentralProcessor cpu;
     private Sensors sensors;
+    private HardwareAbstractionLayer hal;
 
     // ── State ──────────────────────────────────────────────────────────────────
     private final AtomicBoolean recording    = new AtomicBoolean(false);
@@ -60,7 +64,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
 
         try {
             SystemInfo si = new SystemInfo();
-            HardwareAbstractionLayer hal = si.getHardware();
+            hal     = si.getHardware();
             cpu     = hal.getProcessor();
             sensors = hal.getSensors();
             getLogger().info("OSHI initialized — OS: " + System.getProperty("os.name")
@@ -201,9 +205,26 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
     }
 
     private double readPower() {
-        if (powerFile == null) return -1;
-        try { return Double.parseDouble(Files.readString(powerFile).trim()); }
-        catch (Exception e) { return -1; }
+        // Prefer explicit sidecar file (e.g. host RAPL written into Docker volume)
+        if (powerFile != null) {
+            try { return Double.parseDouble(Files.readString(powerFile).trim()); }
+            catch (Exception e) { return -1; }
+        }
+        // Fallback: OSHI PowerSource (whole-system draw; works on macOS, Windows, bare-metal Linux)
+        try {
+            if (hal == null) return -1;
+            List<PowerSource> sources = hal.getPowerSources();
+            double total = 0;
+            int count = 0;
+            for (PowerSource ps : sources) {
+                ps.updateAttributes();
+                double rate = ps.getPowerUsageRate(); // watts; negative = discharging
+                if (Double.isNaN(rate) || rate == 0) continue;
+                total += Math.abs(rate);
+                count++;
+            }
+            return count > 0 ? total : -1;
+        } catch (Exception e) { return -1; }
     }
 
     // ── Live JSON summary ──────────────────────────────────────────────────────

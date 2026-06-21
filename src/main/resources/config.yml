@@ -4,7 +4,6 @@
 output-dir: /tmp
 
 # Path to a file containing the current CPU package power draw in watts (one float per line).
-# Leave empty to disable power logging (shows -1 in CSV).
-# On Linux with Intel RAPL + Pterodactyl: use /home/container/power_w
-# See power-sidecar.py in the repo for the host-side script that writes this file.
+# Use this when running inside Docker (e.g. Pterodactyl) where RAPL is not accessible.
+# Leave empty to let OSHI read power automatically via the OS power supply interface.
 power-file: ""
