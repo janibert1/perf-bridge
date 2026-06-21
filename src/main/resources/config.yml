@@ -7,3 +7,7 @@ output-dir: /tmp
 # Use this when running inside Docker (e.g. Pterodactyl) where RAPL is not accessible.
 # Leave empty to let OSHI read power automatically via the OS power supply interface.
 power-file: ""
+
+# Ticks taking longer than this (ms) get a spike profile saved to output-dir.
+# Set to 0 to disable spike profiling.
+spike-threshold-ms: 40.0
