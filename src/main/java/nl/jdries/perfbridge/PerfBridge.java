@@ -15,6 +15,7 @@ import oshi.hardware.PowerSource;
 import oshi.hardware.Sensors;
 
 import java.util.List;
+import java.util.Locale;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -185,7 +186,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
         double powerW  = readPower();
 
         writeQueue.offer(tickCount + "," + System.currentTimeMillis() + ","
-                + String.format("%.3f,%.1f,%.1f,%.2f", mspt, tempC, freqMhz, powerW));
+                + String.format(Locale.US, "%.3f,%.1f,%.1f,%.2f", mspt, tempC, freqMhz, powerW));
     }
 
     // ── Hardware readers (OSHI) ────────────────────────────────────────────────
@@ -251,7 +252,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
             if (v < min) min = v; if (v > max) max = v; n++;
         }
         double avg = n > 0 ? sum / n : 0;
-        return String.format("{\"avg\":%.2f,\"min\":%.2f,\"max\":%.2f,\"tps\":%.2f}",
+        return String.format(Locale.US, "{\"avg\":%.2f,\"min\":%.2f,\"max\":%.2f,\"tps\":%.2f}",
                 avg, min, max, Math.min(20.0, avg > 0 ? 1000.0 / avg : 20.0));
     }
 }

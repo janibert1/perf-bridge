@@ -57,10 +57,6 @@
                                     <shadedPattern>nl.jdries.perfbridge.libs.oshi</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>com.sun.jna</pattern>
-                                    <shadedPattern>nl.jdries.perfbridge.libs.jna</shadedPattern>
-                                </relocation>
-                                <relocation>
                                     <pattern>com.google.gson</pattern>
                                     <shadedPattern>nl.jdries.perfbridge.libs.gson</shadedPattern>
                                 </relocation>
