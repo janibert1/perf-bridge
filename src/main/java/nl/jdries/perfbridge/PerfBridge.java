@@ -96,7 +96,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("perfmon").setExecutor(this);
         getServer().getScheduler().runTaskTimerAsynchronously(this, this::writeLiveJson, 20L, 20L);
-        getLogger().info("PerfBridge ready — /perfmon start [seconds] | /perfmon stop");
+        getLogger().info("PerfBridge ready — /perfmon start [seconds] [threshold_ms] | /perfmon stop | /perfmon threshold <ms>");
     }
 
     @Override
@@ -208,7 +208,7 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd,
                              @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("Usage: /perfmon start [seconds] | /perfmon stop");
+            sender.sendMessage("Usage: /perfmon start [seconds] [threshold_ms] | /perfmon stop | /perfmon threshold <ms>");
             return true;
         }
         switch (args[0].toLowerCase()) {
@@ -221,13 +221,35 @@ public class PerfBridge extends JavaPlugin implements Listener, CommandExecutor 
                         sender.sendMessage("[PerfBridge] Invalid duration: " + args[1]); return true;
                     }
                 }
+                if (args.length >= 3) {
+                    try {
+                        double thresh = Double.parseDouble(args[2]);
+                        spikeThresholdMs = thresh;
+                        sender.sendMessage("[PerfBridge] Spike threshold set to " + thresh + "ms for this run.");
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("[PerfBridge] Invalid threshold: " + args[2]); return true;
+                    }
+                }
                 startRecording(sender, seconds);
             }
             case "stop" -> {
                 if (!recording.get()) { sender.sendMessage("[PerfBridge] Not recording."); return true; }
                 stopRecording(sender);
             }
-            default -> sender.sendMessage("Usage: /perfmon start [seconds] | /perfmon stop");
+            case "threshold" -> {
+                if (args.length < 2) {
+                    sender.sendMessage("[PerfBridge] Current spike threshold: " + spikeThresholdMs + "ms");
+                    return true;
+                }
+                try {
+                    double thresh = Double.parseDouble(args[1]);
+                    spikeThresholdMs = thresh;
+                    sender.sendMessage("[PerfBridge] Spike threshold set to " + thresh + "ms");
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("[PerfBridge] Invalid threshold: " + args[1]);
+                }
+            }
+            default -> sender.sendMessage("Usage: /perfmon start [seconds] [threshold_ms] | /perfmon stop | /perfmon threshold <ms>");
         }
         return true;
     }
